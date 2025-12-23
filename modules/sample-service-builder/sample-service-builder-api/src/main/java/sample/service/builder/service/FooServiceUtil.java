@@ -5,6 +5,8 @@
 
 package sample.service.builder.service;
 
+import com.liferay.portal.kernel.module.service.Snapshot;
+
 /**
  * Provides the remote service utility for Foo. This utility wraps
  * <code>sample.service.builder.service.impl.FooServiceImpl</code> and is an
@@ -30,18 +32,15 @@ public class FooServiceUtil {
 	 *
 	 * @return the OSGi service identifier
 	 */
-	public static java.lang.String getOSGiServiceIdentifier() {
+	public static String getOSGiServiceIdentifier() {
 		return getService().getOSGiServiceIdentifier();
 	}
 
 	public static FooService getService() {
-		return _service;
+		return _serviceSnapshot.get();
 	}
 
-	public static void setService(FooService service) {
-		_service = service;
-	}
-
-	private static volatile FooService _service;
+	private static final Snapshot<FooService> _serviceSnapshot = new Snapshot<>(
+		FooServiceUtil.class, FooService.class);
 
 }

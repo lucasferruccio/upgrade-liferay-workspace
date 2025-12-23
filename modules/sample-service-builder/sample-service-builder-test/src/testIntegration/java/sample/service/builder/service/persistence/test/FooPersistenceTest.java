@@ -12,6 +12,7 @@ import com.liferay.portal.kernel.dao.orm.DynamicQueryFactoryUtil;
 import com.liferay.portal.kernel.dao.orm.ProjectionFactoryUtil;
 import com.liferay.portal.kernel.dao.orm.QueryUtil;
 import com.liferay.portal.kernel.dao.orm.RestrictionsFactoryUtil;
+import com.liferay.portal.kernel.dao.orm.Session;
 import com.liferay.portal.kernel.test.ReflectionTestUtil;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
@@ -432,16 +433,59 @@ public class FooPersistenceTest {
 
 		_persistence.clearCache();
 
-		Foo existingFoo = _persistence.findByPrimaryKey(newFoo.getPrimaryKey());
+		_assertOriginalValues(
+			_persistence.findByPrimaryKey(newFoo.getPrimaryKey()));
+	}
 
+	@Test
+	public void testResetOriginalValuesWithDynamicQueryLoadFromDatabase()
+		throws Exception {
+
+		_testResetOriginalValuesWithDynamicQuery(true);
+	}
+
+	@Test
+	public void testResetOriginalValuesWithDynamicQueryLoadFromSession()
+		throws Exception {
+
+		_testResetOriginalValuesWithDynamicQuery(false);
+	}
+
+	private void _testResetOriginalValuesWithDynamicQuery(boolean clearSession)
+		throws Exception {
+
+		Foo newFoo = addFoo();
+
+		if (clearSession) {
+			Session session = _persistence.openSession();
+
+			session.flush();
+
+			session.clear();
+		}
+
+		DynamicQuery dynamicQuery = DynamicQueryFactoryUtil.forClass(
+			Foo.class, _dynamicQueryClassLoader);
+
+		dynamicQuery.add(
+			RestrictionsFactoryUtil.eq("fooId", newFoo.getFooId()));
+
+		List<Foo> result = _persistence.findWithDynamicQuery(dynamicQuery);
+
+		_assertOriginalValues(result.get(0));
+	}
+
+	private void _assertOriginalValues(Foo foo) {
 		Assert.assertEquals(
-			existingFoo.getUuid(),
+			foo.getUuid(),
 			ReflectionTestUtil.invoke(
-				existingFoo, "getOriginalUuid", new Class<?>[0]));
+				foo, "getColumnOriginalValue", new Class<?>[] {String.class},
+				"uuid_"));
 		Assert.assertEquals(
-			Long.valueOf(existingFoo.getGroupId()),
+			Long.valueOf(foo.getGroupId()),
 			ReflectionTestUtil.<Long>invoke(
-				existingFoo, "getOriginalGroupId", new Class<?>[0]));
+				foo, "getColumnOriginalValue", new Class<?>[] {String.class},
+				"groupId"));
 	}
 
 	protected Foo addFoo() throws Exception {

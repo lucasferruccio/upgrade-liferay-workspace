@@ -29,7 +29,6 @@ package sample.service.builder.service.http;
  * </p>
  *
  * @author Brian Wing Shun Chan
- * @see FooServiceSoap
  * @generated
  */
 public class FooServiceHttp {

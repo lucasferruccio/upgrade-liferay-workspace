@@ -131,6 +131,11 @@ public class FooWrapper
 		}
 	}
 
+	@Override
+	public Foo cloneWithOriginalValues() {
+		return wrap(model.cloneWithOriginalValues());
+	}
+
 	/**
 	 * Returns the company ID of this foo.
 	 *
@@ -444,6 +449,11 @@ public class FooWrapper
 	@Override
 	public void setUuid(String uuid) {
 		model.setUuid(uuid);
+	}
+
+	@Override
+	public String toXmlString() {
+		return model.toXmlString();
 	}
 
 	@Override
