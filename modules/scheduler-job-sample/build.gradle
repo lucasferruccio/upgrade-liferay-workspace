@@ -3,7 +3,6 @@ dependencies {
 
 	compileOnly group: "org.osgi", name: "org.osgi.core"
 	compileOnly group: "org.osgi", name: "org.osgi.service.component.annotations"
-	compileOnly group: "com.liferay", name: "com.liferay.portal.configuration.metatype.api"
 	compileOnly group: "biz.aQute.bnd", name: "biz.aQute.bndlib", version: "3.1.0"
 
 }

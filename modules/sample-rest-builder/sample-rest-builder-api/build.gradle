@@ -5,11 +5,9 @@ dependencies {
 
 	configurations.all {
 		resolutionStrategy {
-			force 'com.liferay:com.liferay.portal.vulcan.api:3.2.1'
 		}
 	}
 
-	compileOnly group: "com.liferay", name: "com.liferay.portal.vulcan.api"
 
 	compileOnly group: "org.apache.felix", name: "org.apache.felix.http.servlet-api", version: "1.1.2"
 	compileOnly group: "io.swagger.core.v3", name: "swagger-annotations", version: "2.0.5"
