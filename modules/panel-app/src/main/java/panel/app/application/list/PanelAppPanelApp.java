@@ -24,13 +24,14 @@ public class PanelAppPanelApp extends BasePanelApp {
 		return PanelAppPortletKeys.PANELAPP;
 	}
 
-	@Override
 	@Reference(
-		target = "(javax.portlet.name=" + PanelAppPortletKeys.PANELAPP + ")",
-		unbind = "-"
+		target = "(javax.portlet.name=" + PanelAppPortletKeys.PANELAPP + ")"
 	)
-	public void setPortlet(Portlet portlet) {
-		super.setPortlet(portlet);
+	private Portlet _portlet;
+
+	@Override
+	public Portlet getPortlet() {
+		return _portlet;
 	}
 
 }
