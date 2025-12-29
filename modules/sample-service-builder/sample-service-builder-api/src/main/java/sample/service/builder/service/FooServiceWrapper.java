@@ -17,6 +17,10 @@ import com.liferay.portal.kernel.service.ServiceWrapper;
 public class FooServiceWrapper
 	implements FooService, ServiceWrapper<FooService> {
 
+	public FooServiceWrapper() {
+		this(null);
+	}
+
 	public FooServiceWrapper(FooService fooService) {
 		_fooService = fooService;
 	}

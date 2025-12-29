@@ -50,6 +50,7 @@ import org.osgi.service.component.annotations.Reference;
 
 import sample.service.builder.exception.NoSuchFooException;
 import sample.service.builder.model.Foo;
+import sample.service.builder.model.FooTable;
 import sample.service.builder.model.impl.FooImpl;
 import sample.service.builder.model.impl.FooModelImpl;
 import sample.service.builder.service.persistence.FooPersistence;
@@ -251,10 +252,6 @@ public class FooPersistenceImpl
 				}
 			}
 			catch (Exception exception) {
-				if (useFinderCache) {
-					finderCache.removeResult(finderPath, finderArgs);
-				}
-
 				throw processException(exception);
 			}
 			finally {
@@ -601,8 +598,6 @@ public class FooPersistenceImpl
 				finderCache.putResult(finderPath, finderArgs, count);
 			}
 			catch (Exception exception) {
-				finderCache.removeResult(finderPath, finderArgs);
-
 				throw processException(exception);
 			}
 			finally {
@@ -619,7 +614,6 @@ public class FooPersistenceImpl
 		"(foo.uuid IS NULL OR foo.uuid = '')";
 
 	private FinderPath _finderPathFetchByUUID_G;
-	private FinderPath _finderPathCountByUUID_G;
 
 	/**
 	 * Returns the foo where uuid = &#63; and groupId = &#63; or throws a <code>NoSuchFooException</code> if it could not be found.
@@ -759,11 +753,6 @@ public class FooPersistenceImpl
 				}
 			}
 			catch (Exception exception) {
-				if (useFinderCache) {
-					finderCache.removeResult(
-						_finderPathFetchByUUID_G, finderArgs);
-				}
-
 				throw processException(exception);
 			}
 			finally {
@@ -804,64 +793,13 @@ public class FooPersistenceImpl
 	 */
 	@Override
 	public int countByUUID_G(String uuid, long groupId) {
-		uuid = Objects.toString(uuid, "");
+		Foo foo = fetchByUUID_G(uuid, groupId);
 
-		FinderPath finderPath = _finderPathCountByUUID_G;
-
-		Object[] finderArgs = new Object[] {uuid, groupId};
-
-		Long count = (Long)finderCache.getResult(finderPath, finderArgs, this);
-
-		if (count == null) {
-			StringBundler sb = new StringBundler(3);
-
-			sb.append(_SQL_COUNT_FOO_WHERE);
-
-			boolean bindUuid = false;
-
-			if (uuid.isEmpty()) {
-				sb.append(_FINDER_COLUMN_UUID_G_UUID_3);
-			}
-			else {
-				bindUuid = true;
-
-				sb.append(_FINDER_COLUMN_UUID_G_UUID_2);
-			}
-
-			sb.append(_FINDER_COLUMN_UUID_G_GROUPID_2);
-
-			String sql = sb.toString();
-
-			Session session = null;
-
-			try {
-				session = openSession();
-
-				Query query = session.createQuery(sql);
-
-				QueryPos queryPos = QueryPos.getInstance(query);
-
-				if (bindUuid) {
-					queryPos.add(uuid);
-				}
-
-				queryPos.add(groupId);
-
-				count = (Long)query.uniqueResult();
-
-				finderCache.putResult(finderPath, finderArgs, count);
-			}
-			catch (Exception exception) {
-				finderCache.removeResult(finderPath, finderArgs);
-
-				throw processException(exception);
-			}
-			finally {
-				closeSession(session);
-			}
+		if (foo == null) {
+			return 0;
 		}
 
-		return count.intValue();
+		return 1;
 	}
 
 	private static final String _FINDER_COLUMN_UUID_G_UUID_2 =
@@ -1053,10 +991,6 @@ public class FooPersistenceImpl
 				}
 			}
 			catch (Exception exception) {
-				if (useFinderCache) {
-					finderCache.removeResult(finderPath, finderArgs);
-				}
-
 				throw processException(exception);
 			}
 			finally {
@@ -1430,8 +1364,6 @@ public class FooPersistenceImpl
 				finderCache.putResult(finderPath, finderArgs, count);
 			}
 			catch (Exception exception) {
-				finderCache.removeResult(finderPath, finderArgs);
-
 				throw processException(exception);
 			}
 			finally {
@@ -1602,10 +1534,6 @@ public class FooPersistenceImpl
 				}
 			}
 			catch (Exception exception) {
-				if (useFinderCache) {
-					finderCache.removeResult(finderPath, finderArgs);
-				}
-
 				throw processException(exception);
 			}
 			finally {
@@ -1929,8 +1857,6 @@ public class FooPersistenceImpl
 				finderCache.putResult(finderPath, finderArgs, count);
 			}
 			catch (Exception exception) {
-				finderCache.removeResult(finderPath, finderArgs);
-
 				throw processException(exception);
 			}
 			finally {
@@ -1955,6 +1881,8 @@ public class FooPersistenceImpl
 
 		setModelImplClass(FooImpl.class);
 		setModelPKClass(long.class);
+
+		setTable(FooTable.INSTANCE);
 	}
 
 	/**
@@ -1964,14 +1892,11 @@ public class FooPersistenceImpl
 	 */
 	@Override
 	public void cacheResult(Foo foo) {
-		entityCache.putResult(
-			entityCacheEnabled, FooImpl.class, foo.getPrimaryKey(), foo);
+		entityCache.putResult(FooImpl.class, foo.getPrimaryKey(), foo);
 
 		finderCache.putResult(
 			_finderPathFetchByUUID_G,
 			new Object[] {foo.getUuid(), foo.getGroupId()}, foo);
-
-		foo.resetOriginalValues();
 	}
 
 	private int _valueObjectFinderCacheListThreshold;
@@ -1991,14 +1916,10 @@ public class FooPersistenceImpl
 		}
 
 		for (Foo foo : foos) {
-			if (entityCache.getResult(
-					entityCacheEnabled, FooImpl.class, foo.getPrimaryKey()) ==
-						null) {
+			if (entityCache.getResult(FooImpl.class, foo.getPrimaryKey()) ==
+					null) {
 
 				cacheResult(foo);
-			}
-			else {
-				foo.resetOriginalValues();
 			}
 		}
 	}
@@ -2014,9 +1935,7 @@ public class FooPersistenceImpl
 	public void clearCache() {
 		entityCache.clearCache(FooImpl.class);
 
-		finderCache.clearCache(FINDER_CLASS_NAME_ENTITY);
-		finderCache.clearCache(FINDER_CLASS_NAME_LIST_WITH_PAGINATION);
-		finderCache.clearCache(FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION);
+		finderCache.clearCache(FooImpl.class);
 	}
 
 	/**
@@ -2028,36 +1947,22 @@ public class FooPersistenceImpl
 	 */
 	@Override
 	public void clearCache(Foo foo) {
-		entityCache.removeResult(
-			entityCacheEnabled, FooImpl.class, foo.getPrimaryKey());
-
-		finderCache.clearCache(FINDER_CLASS_NAME_LIST_WITH_PAGINATION);
-		finderCache.clearCache(FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION);
-
-		clearUniqueFindersCache((FooModelImpl)foo, true);
+		entityCache.removeResult(FooImpl.class, foo);
 	}
 
 	@Override
 	public void clearCache(List<Foo> foos) {
-		finderCache.clearCache(FINDER_CLASS_NAME_LIST_WITH_PAGINATION);
-		finderCache.clearCache(FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION);
-
 		for (Foo foo : foos) {
-			entityCache.removeResult(
-				entityCacheEnabled, FooImpl.class, foo.getPrimaryKey());
-
-			clearUniqueFindersCache((FooModelImpl)foo, true);
+			entityCache.removeResult(FooImpl.class, foo);
 		}
 	}
 
+	@Override
 	public void clearCache(Set<Serializable> primaryKeys) {
-		finderCache.clearCache(FINDER_CLASS_NAME_ENTITY);
-		finderCache.clearCache(FINDER_CLASS_NAME_LIST_WITH_PAGINATION);
-		finderCache.clearCache(FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION);
+		finderCache.clearCache(FooImpl.class);
 
 		for (Serializable primaryKey : primaryKeys) {
-			entityCache.removeResult(
-				entityCacheEnabled, FooImpl.class, primaryKey);
+			entityCache.removeResult(FooImpl.class, primaryKey);
 		}
 	}
 
@@ -2066,35 +1971,7 @@ public class FooPersistenceImpl
 			fooModelImpl.getUuid(), fooModelImpl.getGroupId()
 		};
 
-		finderCache.putResult(
-			_finderPathCountByUUID_G, args, Long.valueOf(1), false);
-		finderCache.putResult(
-			_finderPathFetchByUUID_G, args, fooModelImpl, false);
-	}
-
-	protected void clearUniqueFindersCache(
-		FooModelImpl fooModelImpl, boolean clearCurrent) {
-
-		if (clearCurrent) {
-			Object[] args = new Object[] {
-				fooModelImpl.getUuid(), fooModelImpl.getGroupId()
-			};
-
-			finderCache.removeResult(_finderPathCountByUUID_G, args);
-			finderCache.removeResult(_finderPathFetchByUUID_G, args);
-		}
-
-		if ((fooModelImpl.getColumnBitmask() &
-			 _finderPathFetchByUUID_G.getColumnBitmask()) != 0) {
-
-			Object[] args = new Object[] {
-				fooModelImpl.getOriginalUuid(),
-				fooModelImpl.getOriginalGroupId()
-			};
-
-			finderCache.removeResult(_finderPathCountByUUID_G, args);
-			finderCache.removeResult(_finderPathFetchByUUID_G, args);
-		}
+		finderCache.putResult(_finderPathFetchByUUID_G, args, fooModelImpl);
 	}
 
 	/**
@@ -2256,8 +2133,6 @@ public class FooPersistenceImpl
 
 			if (isNew) {
 				session.save(foo);
-
-				foo.setNew(false);
 			}
 			else {
 				foo = (Foo)session.merge(foo);
@@ -2270,99 +2145,13 @@ public class FooPersistenceImpl
 			closeSession(session);
 		}
 
-		finderCache.clearCache(FINDER_CLASS_NAME_LIST_WITH_PAGINATION);
+		entityCache.putResult(FooImpl.class, fooModelImpl, false, true);
 
-		if (!_columnBitmaskEnabled) {
-			finderCache.clearCache(FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION);
-		}
-		else if (isNew) {
-			Object[] args = new Object[] {fooModelImpl.getUuid()};
-
-			finderCache.removeResult(_finderPathCountByUuid, args);
-			finderCache.removeResult(
-				_finderPathWithoutPaginationFindByUuid, args);
-
-			args = new Object[] {
-				fooModelImpl.getUuid(), fooModelImpl.getCompanyId()
-			};
-
-			finderCache.removeResult(_finderPathCountByUuid_C, args);
-			finderCache.removeResult(
-				_finderPathWithoutPaginationFindByUuid_C, args);
-
-			args = new Object[] {fooModelImpl.isField2()};
-
-			finderCache.removeResult(_finderPathCountByField2, args);
-			finderCache.removeResult(
-				_finderPathWithoutPaginationFindByField2, args);
-
-			finderCache.removeResult(_finderPathCountAll, FINDER_ARGS_EMPTY);
-			finderCache.removeResult(
-				_finderPathWithoutPaginationFindAll, FINDER_ARGS_EMPTY);
-		}
-		else {
-			if ((fooModelImpl.getColumnBitmask() &
-				 _finderPathWithoutPaginationFindByUuid.getColumnBitmask()) !=
-					 0) {
-
-				Object[] args = new Object[] {fooModelImpl.getOriginalUuid()};
-
-				finderCache.removeResult(_finderPathCountByUuid, args);
-				finderCache.removeResult(
-					_finderPathWithoutPaginationFindByUuid, args);
-
-				args = new Object[] {fooModelImpl.getUuid()};
-
-				finderCache.removeResult(_finderPathCountByUuid, args);
-				finderCache.removeResult(
-					_finderPathWithoutPaginationFindByUuid, args);
-			}
-
-			if ((fooModelImpl.getColumnBitmask() &
-				 _finderPathWithoutPaginationFindByUuid_C.getColumnBitmask()) !=
-					 0) {
-
-				Object[] args = new Object[] {
-					fooModelImpl.getOriginalUuid(),
-					fooModelImpl.getOriginalCompanyId()
-				};
-
-				finderCache.removeResult(_finderPathCountByUuid_C, args);
-				finderCache.removeResult(
-					_finderPathWithoutPaginationFindByUuid_C, args);
-
-				args = new Object[] {
-					fooModelImpl.getUuid(), fooModelImpl.getCompanyId()
-				};
-
-				finderCache.removeResult(_finderPathCountByUuid_C, args);
-				finderCache.removeResult(
-					_finderPathWithoutPaginationFindByUuid_C, args);
-			}
-
-			if ((fooModelImpl.getColumnBitmask() &
-				 _finderPathWithoutPaginationFindByField2.getColumnBitmask()) !=
-					 0) {
-
-				Object[] args = new Object[] {fooModelImpl.getOriginalField2()};
-
-				finderCache.removeResult(_finderPathCountByField2, args);
-				finderCache.removeResult(
-					_finderPathWithoutPaginationFindByField2, args);
-
-				args = new Object[] {fooModelImpl.isField2()};
-
-				finderCache.removeResult(_finderPathCountByField2, args);
-				finderCache.removeResult(
-					_finderPathWithoutPaginationFindByField2, args);
-			}
-		}
-
-		entityCache.putResult(
-			entityCacheEnabled, FooImpl.class, foo.getPrimaryKey(), foo, false);
-
-		clearUniqueFindersCache(fooModelImpl, false);
 		cacheUniqueFindersCache(fooModelImpl);
+
+		if (isNew) {
+			foo.setNew(false);
+		}
 
 		foo.resetOriginalValues();
 
@@ -2541,10 +2330,6 @@ public class FooPersistenceImpl
 				}
 			}
 			catch (Exception exception) {
-				if (useFinderCache) {
-					finderCache.removeResult(finderPath, finderArgs);
-				}
-
 				throw processException(exception);
 			}
 			finally {
@@ -2590,9 +2375,6 @@ public class FooPersistenceImpl
 					_finderPathCountAll, FINDER_ARGS_EMPTY, count);
 			}
 			catch (Exception exception) {
-				finderCache.removeResult(
-					_finderPathCountAll, FINDER_ARGS_EMPTY);
-
 				throw processException(exception);
 			}
 			finally {
@@ -2633,99 +2415,80 @@ public class FooPersistenceImpl
 	 */
 	@Activate
 	public void activate() {
-		FooModelImpl.setEntityCacheEnabled(entityCacheEnabled);
-		FooModelImpl.setFinderCacheEnabled(finderCacheEnabled);
-
 		_valueObjectFinderCacheListThreshold = GetterUtil.getInteger(
 			PropsUtil.get(PropsKeys.VALUE_OBJECT_FINDER_CACHE_LIST_THRESHOLD));
 
 		_finderPathWithPaginationFindAll = new FinderPath(
-			entityCacheEnabled, finderCacheEnabled, FooImpl.class,
-			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findAll", new String[0]);
+			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findAll", new String[0],
+			new String[0], true);
 
 		_finderPathWithoutPaginationFindAll = new FinderPath(
-			entityCacheEnabled, finderCacheEnabled, FooImpl.class,
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findAll",
-			new String[0]);
+			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findAll", new String[0],
+			new String[0], true);
 
 		_finderPathCountAll = new FinderPath(
-			entityCacheEnabled, finderCacheEnabled, Long.class,
 			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countAll",
-			new String[0]);
+			new String[0], new String[0], false);
 
 		_finderPathWithPaginationFindByUuid = new FinderPath(
-			entityCacheEnabled, finderCacheEnabled, FooImpl.class,
 			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByUuid",
 			new String[] {
 				String.class.getName(), Integer.class.getName(),
 				Integer.class.getName(), OrderByComparator.class.getName()
-			});
+			},
+			new String[] {"uuid_"}, true);
 
 		_finderPathWithoutPaginationFindByUuid = new FinderPath(
-			entityCacheEnabled, finderCacheEnabled, FooImpl.class,
 			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByUuid",
-			new String[] {String.class.getName()},
-			FooModelImpl.UUID_COLUMN_BITMASK |
-			FooModelImpl.FIELD1_COLUMN_BITMASK);
+			new String[] {String.class.getName()}, new String[] {"uuid_"},
+			true);
 
 		_finderPathCountByUuid = new FinderPath(
-			entityCacheEnabled, finderCacheEnabled, Long.class,
 			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByUuid",
-			new String[] {String.class.getName()});
+			new String[] {String.class.getName()}, new String[] {"uuid_"},
+			false);
 
 		_finderPathFetchByUUID_G = new FinderPath(
-			entityCacheEnabled, finderCacheEnabled, FooImpl.class,
 			FINDER_CLASS_NAME_ENTITY, "fetchByUUID_G",
 			new String[] {String.class.getName(), Long.class.getName()},
-			FooModelImpl.UUID_COLUMN_BITMASK |
-			FooModelImpl.GROUPID_COLUMN_BITMASK);
-
-		_finderPathCountByUUID_G = new FinderPath(
-			entityCacheEnabled, finderCacheEnabled, Long.class,
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByUUID_G",
-			new String[] {String.class.getName(), Long.class.getName()});
+			new String[] {"uuid_", "groupId"}, true);
 
 		_finderPathWithPaginationFindByUuid_C = new FinderPath(
-			entityCacheEnabled, finderCacheEnabled, FooImpl.class,
 			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByUuid_C",
 			new String[] {
 				String.class.getName(), Long.class.getName(),
 				Integer.class.getName(), Integer.class.getName(),
 				OrderByComparator.class.getName()
-			});
+			},
+			new String[] {"uuid_", "companyId"}, true);
 
 		_finderPathWithoutPaginationFindByUuid_C = new FinderPath(
-			entityCacheEnabled, finderCacheEnabled, FooImpl.class,
 			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByUuid_C",
 			new String[] {String.class.getName(), Long.class.getName()},
-			FooModelImpl.UUID_COLUMN_BITMASK |
-			FooModelImpl.COMPANYID_COLUMN_BITMASK |
-			FooModelImpl.FIELD1_COLUMN_BITMASK);
+			new String[] {"uuid_", "companyId"}, true);
 
 		_finderPathCountByUuid_C = new FinderPath(
-			entityCacheEnabled, finderCacheEnabled, Long.class,
 			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByUuid_C",
-			new String[] {String.class.getName(), Long.class.getName()});
+			new String[] {String.class.getName(), Long.class.getName()},
+			new String[] {"uuid_", "companyId"}, false);
 
 		_finderPathWithPaginationFindByField2 = new FinderPath(
-			entityCacheEnabled, finderCacheEnabled, FooImpl.class,
 			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByField2",
 			new String[] {
 				Boolean.class.getName(), Integer.class.getName(),
 				Integer.class.getName(), OrderByComparator.class.getName()
-			});
+			},
+			new String[] {"field2"}, true);
 
 		_finderPathWithoutPaginationFindByField2 = new FinderPath(
-			entityCacheEnabled, finderCacheEnabled, FooImpl.class,
 			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByField2",
-			new String[] {Boolean.class.getName()},
-			FooModelImpl.FIELD2_COLUMN_BITMASK |
-			FooModelImpl.FIELD1_COLUMN_BITMASK);
+			new String[] {Boolean.class.getName()}, new String[] {"field2"},
+			true);
 
 		_finderPathCountByField2 = new FinderPath(
-			entityCacheEnabled, finderCacheEnabled, Long.class,
 			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByField2",
-			new String[] {Boolean.class.getName()});
+			new String[] {Boolean.class.getName()}, new String[] {"field2"},
+			false);
 
 		FooUtil.setPersistence(this);
 	}
@@ -2735,10 +2498,6 @@ public class FooPersistenceImpl
 		FooUtil.setPersistence(null);
 
 		entityCache.removeCache(FooImpl.class.getName());
-
-		finderCache.removeCache(FINDER_CLASS_NAME_ENTITY);
-		finderCache.removeCache(FINDER_CLASS_NAME_LIST_WITH_PAGINATION);
-		finderCache.removeCache(FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION);
 	}
 
 	@Override
@@ -2747,12 +2506,6 @@ public class FooPersistenceImpl
 		unbind = "-"
 	)
 	public void setConfiguration(Configuration configuration) {
-		super.setConfiguration(configuration);
-
-		_columnBitmaskEnabled = GetterUtil.getBoolean(
-			configuration.get(
-				"value.object.column.bitmask.enabled.sample.service.builder.model.Foo"),
-			true);
 	}
 
 	@Override
@@ -2772,8 +2525,6 @@ public class FooPersistenceImpl
 	public void setSessionFactory(SessionFactory sessionFactory) {
 		super.setSessionFactory(sessionFactory);
 	}
-
-	private boolean _columnBitmaskEnabled;
 
 	@Reference
 	protected EntityCache entityCache;
@@ -2805,5 +2556,10 @@ public class FooPersistenceImpl
 
 	private static final Set<String> _badColumnNames = SetUtil.fromArray(
 		new String[] {"uuid"});
+
+	@Override
+	protected FinderCache getFinderCache() {
+		return finderCache;
+	}
 
 }

@@ -10,11 +10,11 @@ import com.liferay.exportimport.kernel.lar.ManifestSummary;
 import com.liferay.exportimport.kernel.lar.PortletDataContext;
 import com.liferay.exportimport.kernel.lar.StagedModelDataHandlerUtil;
 import com.liferay.exportimport.kernel.lar.StagedModelType;
+import com.liferay.petra.sql.dsl.query.DSLQuery;
 import com.liferay.portal.aop.AopService;
 import com.liferay.portal.kernel.dao.db.DB;
 import com.liferay.portal.kernel.dao.db.DBManagerUtil;
-import com.liferay.portal.kernel.dao.jdbc.SqlUpdate;
-import com.liferay.portal.kernel.dao.jdbc.SqlUpdateFactoryUtil;
+import com.liferay.portal.kernel.dao.jdbc.CurrentConnectionUtil;
 import com.liferay.portal.kernel.dao.orm.ActionableDynamicQuery;
 import com.liferay.portal.kernel.dao.orm.DefaultActionableDynamicQuery;
 import com.liferay.portal.kernel.dao.orm.DynamicQuery;
@@ -39,6 +39,8 @@ import com.liferay.portal.kernel.util.PortalUtil;
 
 import java.io.Serializable;
 
+import java.sql.Connection;
+
 import java.util.List;
 
 import javax.sql.DataSource;
@@ -48,7 +50,6 @@ import org.osgi.service.component.annotations.Reference;
 
 import sample.service.builder.model.Foo;
 import sample.service.builder.service.FooLocalService;
-import sample.service.builder.service.FooLocalServiceUtil;
 import sample.service.builder.service.persistence.FooPersistence;
 
 /**
@@ -69,7 +70,7 @@ public abstract class FooLocalServiceBaseImpl
 	/*
 	 * NOTE FOR DEVELOPERS:
 	 *
-	 * Never modify or reference this class directly. Use <code>FooLocalService</code> via injection or a <code>org.osgi.util.tracker.ServiceTracker</code> or use <code>FooLocalServiceUtil</code>.
+	 * Never modify or reference this class directly. Use <code>FooLocalService</code> via injection or a <code>org.osgi.util.tracker.ServiceTracker</code> or use <code>sample.service.builder.service.FooLocalServiceUtil</code>.
 	 */
 
 	/**
@@ -133,6 +134,18 @@ public abstract class FooLocalServiceBaseImpl
 	@Override
 	public Foo deleteFoo(Foo foo) {
 		return fooPersistence.remove(foo);
+	}
+
+	@Override
+	public <T> T dslQuery(DSLQuery dslQuery) {
+		return fooPersistence.dslQuery(dslQuery);
+	}
+
+	@Override
+	public int dslQueryCount(DSLQuery dslQuery) {
+		Long count = dslQuery(dslQuery);
+
+		return count.intValue();
 	}
 
 	@Override
@@ -357,12 +370,28 @@ public abstract class FooLocalServiceBaseImpl
 	 * @throws PortalException
 	 */
 	@Override
+	public PersistedModel createPersistedModel(Serializable primaryKeyObj)
+		throws PortalException {
+
+		return fooPersistence.create(((Long)primaryKeyObj).longValue());
+	}
+
+	/**
+	 * @throws PortalException
+	 */
+	@Override
 	public PersistedModel deletePersistedModel(PersistedModel persistedModel)
 		throws PortalException {
+
+		if (_log.isWarnEnabled()) {
+			_log.warn(
+				"Implement FooLocalServiceImpl#deleteFoo(Foo) to avoid orphaned data");
+		}
 
 		return fooLocalService.deleteFoo((Foo)persistedModel);
 	}
 
+	@Override
 	public BasePersistence<Foo> getBasePersistence() {
 		return fooPersistence;
 	}
@@ -467,7 +496,6 @@ public abstract class FooLocalServiceBaseImpl
 
 	@Deactivate
 	protected void deactivate() {
-		FooLocalServiceUtil.setService(null);
 	}
 
 	@Override
@@ -481,8 +509,6 @@ public abstract class FooLocalServiceBaseImpl
 	@Override
 	public void setAopProxy(Object aopProxy) {
 		fooLocalService = (FooLocalService)aopProxy;
-
-		FooLocalServiceUtil.setService(fooLocalService);
 	}
 
 	/**
@@ -509,18 +535,23 @@ public abstract class FooLocalServiceBaseImpl
 	 * @param sql the sql query
 	 */
 	protected void runSQL(String sql) {
+		DataSource dataSource = fooPersistence.getDataSource();
+
+		DB db = DBManagerUtil.getDB();
+
+		Connection currentConnection = CurrentConnectionUtil.getConnection(
+			dataSource);
+
 		try {
-			DataSource dataSource = fooPersistence.getDataSource();
+			if (currentConnection != null) {
+				db.runSQL(currentConnection, new String[] {sql});
 
-			DB db = DBManagerUtil.getDB();
+				return;
+			}
 
-			sql = db.buildSQL(sql);
-			sql = PortalUtil.transformSQL(sql);
-
-			SqlUpdate sqlUpdate = SqlUpdateFactoryUtil.getSqlUpdate(
-				dataSource, sql);
-
-			sqlUpdate.update();
+			try (Connection connection = dataSource.getConnection()) {
+				db.runSQL(connection, new String[] {sql});
+			}
 		}
 		catch (Exception exception) {
 			throw new SystemException(exception);

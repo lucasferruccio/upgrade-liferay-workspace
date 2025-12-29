@@ -5,9 +5,11 @@
 
 package sample.service.builder.service;
 
+import com.liferay.petra.sql.dsl.query.DSLQuery;
 import com.liferay.portal.kernel.dao.orm.DynamicQuery;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.model.PersistedModel;
+import com.liferay.portal.kernel.module.service.Snapshot;
 import com.liferay.portal.kernel.util.OrderByComparator;
 
 import java.io.Serializable;
@@ -61,6 +63,16 @@ public class FooLocalServiceUtil {
 	}
 
 	/**
+	 * @throws PortalException
+	 */
+	public static PersistedModel createPersistedModel(
+			Serializable primaryKeyObj)
+		throws PortalException {
+
+		return getService().createPersistedModel(primaryKeyObj);
+	}
+
+	/**
 	 * Deletes the foo from the database. Also notifies the appropriate model listeners.
 	 *
 	 * <p>
@@ -97,6 +109,14 @@ public class FooLocalServiceUtil {
 		throws PortalException {
 
 		return getService().deletePersistedModel(persistedModel);
+	}
+
+	public static <T> T dslQuery(DSLQuery dslQuery) {
+		return getService().dslQuery(dslQuery);
+	}
+
+	public static int dslQueryCount(DSLQuery dslQuery) {
+		return getService().dslQueryCount(dslQuery);
 	}
 
 	public static DynamicQuery dynamicQuery() {
@@ -325,13 +345,10 @@ public class FooLocalServiceUtil {
 	}
 
 	public static FooLocalService getService() {
-		return _service;
+		return _serviceSnapshot.get();
 	}
 
-	public static void setService(FooLocalService service) {
-		_service = service;
-	}
-
-	private static volatile FooLocalService _service;
+	private static final Snapshot<FooLocalService> _serviceSnapshot =
+		new Snapshot<>(FooLocalServiceUtil.class, FooLocalService.class);
 
 }

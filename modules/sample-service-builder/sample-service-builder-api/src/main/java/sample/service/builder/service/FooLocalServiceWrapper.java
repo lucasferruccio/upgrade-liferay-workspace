@@ -6,6 +6,7 @@
 package sample.service.builder.service;
 
 import com.liferay.portal.kernel.service.ServiceWrapper;
+import com.liferay.portal.kernel.service.persistence.BasePersistence;
 
 /**
  * Provides a wrapper for {@link FooLocalService}.
@@ -16,6 +17,10 @@ import com.liferay.portal.kernel.service.ServiceWrapper;
  */
 public class FooLocalServiceWrapper
 	implements FooLocalService, ServiceWrapper<FooLocalService> {
+
+	public FooLocalServiceWrapper() {
+		this(null);
+	}
 
 	public FooLocalServiceWrapper(FooLocalService fooLocalService) {
 		_fooLocalService = fooLocalService;
@@ -47,6 +52,17 @@ public class FooLocalServiceWrapper
 	@Override
 	public sample.service.builder.model.Foo createFoo(long fooId) {
 		return _fooLocalService.createFoo(fooId);
+	}
+
+	/**
+	 * @throws PortalException
+	 */
+	@Override
+	public com.liferay.portal.kernel.model.PersistedModel createPersistedModel(
+			java.io.Serializable primaryKeyObj)
+		throws com.liferay.portal.kernel.exception.PortalException {
+
+		return _fooLocalService.createPersistedModel(primaryKeyObj);
 	}
 
 	/**
@@ -93,6 +109,18 @@ public class FooLocalServiceWrapper
 		throws com.liferay.portal.kernel.exception.PortalException {
 
 		return _fooLocalService.deletePersistedModel(persistedModel);
+	}
+
+	@Override
+	public <T> T dslQuery(com.liferay.petra.sql.dsl.query.DSLQuery dslQuery) {
+		return _fooLocalService.dslQuery(dslQuery);
+	}
+
+	@Override
+	public int dslQueryCount(
+		com.liferay.petra.sql.dsl.query.DSLQuery dslQuery) {
+
+		return _fooLocalService.dslQueryCount(dslQuery);
 	}
 
 	@Override
@@ -356,6 +384,11 @@ public class FooLocalServiceWrapper
 		sample.service.builder.model.Foo foo) {
 
 		return _fooLocalService.updateFoo(foo);
+	}
+
+	@Override
+	public BasePersistence<?> getBasePersistence() {
+		return _fooLocalService.getBasePersistence();
 	}
 
 	@Override
