@@ -14,12 +14,10 @@ dependencies {
 	compileOnly group: "org.osgi", name: "org.osgi.service.component", version: "1.4.0"
 	compileOnly group: "org.osgi", name: "org.osgi.service.component.annotations"
 
-	compileOnly group: "com.liferay", name: "com.liferay.portal.vulcan.api", version: "3.2.1"
 	compileOnly group: "com.liferay.portal", name: "release.dxp.api"
 
 	configurations.all {
 		resolutionStrategy {
-			force 'com.liferay:com.liferay.portal.vulcan.api:3.2.1'
 		}
 	}
 }
