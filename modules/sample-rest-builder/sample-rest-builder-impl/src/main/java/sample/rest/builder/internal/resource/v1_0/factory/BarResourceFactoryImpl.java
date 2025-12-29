@@ -212,6 +212,11 @@ public class BarResourceFactoryImpl implements BarResource.Factory {
 			return _user.getLocale();
 		}
 
+		@Override
+		public boolean isAcceptAllLanguages() {
+			return false;
+		}
+
 		private final HttpServletRequest _httpServletRequest;
 		private final Locale _preferredLocale;
 		private final User _user;

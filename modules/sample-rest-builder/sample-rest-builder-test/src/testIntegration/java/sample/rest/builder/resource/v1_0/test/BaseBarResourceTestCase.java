@@ -217,6 +217,43 @@ public abstract class BaseBarResourceTestCase {
 	}
 
 	@Test
+	public void testGraphQLDeleteBar() throws Exception {
+		Bar bar = testGraphQLBar_addBar();
+
+		Assert.assertTrue(
+			JSONUtil.getValueAsBoolean(
+				invokeGraphQLMutation(
+					new GraphQLField(
+						"deleteBar",
+						new HashMap<String, Object>() {
+							{
+								put("barId", bar.getId());
+							}
+						})),
+				"JSONObject/data", "Object/deleteBar"));
+
+		try (CaptureAppender captureAppender =
+				Log4JLoggerTestUtil.configureLog4JLogger(
+					"graphql.execution.SimpleDataFetcherExceptionHandler",
+					Level.WARN)) {
+
+			JSONArray errorsJSONArray = JSONUtil.getValueAsJSONArray(
+				invokeGraphQLQuery(
+					new GraphQLField(
+						"bar",
+						new HashMap<String, Object>() {
+							{
+								put("barId", bar.getId());
+							}
+						},
+						new GraphQLField("id"))),
+				"JSONArray/errors");
+
+			Assert.assertTrue(errorsJSONArray.length() > 0);
+		}
+	}
+
+	@Test
 	public void testGetBar() throws Exception {
 		Bar postBar = testGetBar_addBar();
 
@@ -229,6 +266,27 @@ public abstract class BaseBarResourceTestCase {
 	protected Bar testGetBar_addBar() throws Exception {
 		throw new UnsupportedOperationException(
 			"This method needs to be implemented");
+	}
+
+	@Test
+	public void testGraphQLGetBar() throws Exception {
+		Bar bar = testGraphQLBar_addBar();
+
+		Assert.assertTrue(
+			equals(
+				bar,
+				BarSerDes.toDTO(
+					JSONUtil.getValueAsString(
+						invokeGraphQLQuery(
+							new GraphQLField(
+								"bar",
+								new HashMap<String, Object>() {
+									{
+										put("barId", bar.getId());
+									}
+								},
+								getGraphQLFields())),
+						"JSONObject/data", "Object/bar"))));
 	}
 
 	@Test
@@ -412,6 +470,34 @@ public abstract class BaseBarResourceTestCase {
 		return graphQLFields;
 	}
 
+	protected List<GraphQLField> getGraphQLFields(Field... fields)
+		throws Exception {
+
+		List<GraphQLField> graphQLFields = new ArrayList<>();
+
+		for (Field field : fields) {
+			com.liferay.portal.vulcan.graphql.annotation.GraphQLField
+				vulcanGraphQLField = field.getAnnotation(
+					com.liferay.portal.vulcan.graphql.annotation.GraphQLField.
+						class);
+
+			if (vulcanGraphQLField != null) {
+				Class<?> clazz = field.getType();
+
+				if (clazz.isArray()) {
+					clazz = clazz.getComponentType();
+				}
+
+				List<GraphQLField> childrenGraphQLFields = getGraphQLFields(
+					ReflectionUtil.getDeclaredFields(clazz));
+
+				graphQLFields.add(
+					new GraphQLField(field.getName(), childrenGraphQLFields));
+			}
+		}
+
+		return graphQLFields;
+	}
 
 	protected String[] getIgnoredEntityFieldNames() {
 		return new String[0];
