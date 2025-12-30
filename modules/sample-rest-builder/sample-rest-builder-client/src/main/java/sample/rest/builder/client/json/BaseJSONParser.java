@@ -1,5 +1,7 @@
 package sample.rest.builder.client.json;
 
+import java.math.BigDecimal;
+
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -10,7 +12,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Stack;
 import java.util.TreeMap;
-import java.util.stream.Stream;
 
 import javax.annotation.Generated;
 
@@ -73,7 +74,7 @@ public abstract class BaseJSONParser<T> {
 
 			_readWhileLastCharIsWhiteSpace();
 
-			setField(dto, fieldName, _readValue());
+			setField(dto, fieldName, _readValue(parseMaps(fieldName)));
 
 			_readWhileLastCharIsWhiteSpace();
 		}
@@ -109,13 +110,13 @@ public abstract class BaseJSONParser<T> {
 
 		Object[] objects = (Object[])_readValue();
 
-		return Stream.of(
-			objects
-		).map(
-			object -> parseToDTO((String)object)
-		).toArray(
-			size -> createDTOArray(size)
-		);
+		T[] dtos = createDTOArray(objects.length);
+
+		for (int i = 0; i < dtos.length; i++) {
+			dtos[i] = parseToDTO((String)objects[i]);
+		}
+
+		return dtos;
 	}
 
 	public Map<String, Object> parseToMap(String json) {
@@ -174,8 +175,20 @@ public abstract class BaseJSONParser<T> {
 
 	protected abstract T[] createDTOArray(int size);
 
+	protected abstract boolean parseMaps(String jsonParserFieldName);
+
 	protected abstract void setField(
 		T dto, String jsonParserFieldName, Object jsonParserFieldValue);
+
+	protected BigDecimal[] toBigDecimals(Object[] objects) {
+		BigDecimal[] bigdecimals = new BigDecimal[objects.length];
+
+		for (int i = 0; i < bigdecimals.length; i++) {
+			bigdecimals[i] = new BigDecimal(objects[i].toString());
+		}
+
+		return bigdecimals;
+	}
 
 	protected Date toDate(String string) {
 		try {
@@ -188,33 +201,33 @@ public abstract class BaseJSONParser<T> {
 	}
 
 	protected Date[] toDates(Object[] objects) {
-		return Stream.of(
-			objects
-		).map(
-			object -> toDate((String)object)
-		).toArray(
-			size -> new Date[size]
-		);
+		Date[] dates = new Date[objects.length];
+
+		for (int i = 0; i < dates.length; i++) {
+			dates[i] = toDate((String)objects[i]);
+		}
+
+		return dates;
 	}
 
 	protected Integer[] toIntegers(Object[] objects) {
-		return Stream.of(
-			objects
-		).map(
-			object -> Integer.valueOf(object.toString())
-		).toArray(
-			size -> new Integer[size]
-		);
+		Integer[] integers = new Integer[objects.length];
+
+		for (int i = 0; i < integers.length; i++) {
+			integers[i] = Integer.valueOf(objects[i].toString());
+		}
+
+		return integers;
 	}
 
 	protected Long[] toLongs(Object[] objects) {
-		return Stream.of(
-			objects
-		).map(
-			object -> Long.valueOf(object.toString())
-		).toArray(
-			size -> new Long[size]
-		);
+		Long[] longs = new Long[objects.length];
+
+		for (int i = 0; i < longs.length; i++) {
+			longs[i] = Long.valueOf(objects[i].toString());
+		}
+
+		return longs;
 	}
 
 	protected String toString(Date date) {
@@ -222,13 +235,13 @@ public abstract class BaseJSONParser<T> {
 	}
 
 	protected String[] toStrings(Object[] objects) {
-		return Stream.of(
-			objects
-		).map(
-			String.class::cast
-		).toArray(
-			size -> new String[size]
-		);
+		String[] strings = new String[objects.length];
+
+		for (int i = 0; i < strings.length; i++) {
+			strings[i] = (String)objects[i];
+		}
+
+		return strings;
 	}
 
 	private void _assertLastChar(char c) {
@@ -275,10 +288,26 @@ public abstract class BaseJSONParser<T> {
 
 	private void _init(String json) {
 		_captureStartStack = new Stack<>();
-		_dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
+		_dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXX");
 		_index = 0;
 		_json = json.trim();
 		_lastChar = 0;
+	}
+
+	private boolean _isCharEscaped(String string, int index) {
+		int backslashCount = 0;
+
+		while (((index - 1 - backslashCount) >= 0) &&
+			   (string.charAt(index - 1 - backslashCount) == '\\')) {
+
+			backslashCount++;
+		}
+
+		if ((backslashCount % 2) == 0) {
+			return false;
+		}
+
+		return true;
 	}
 
 	private boolean _isEmpty() {
@@ -329,6 +358,14 @@ public abstract class BaseJSONParser<T> {
 		return false;
 	}
 
+	private boolean _isLastCharPositive() {
+		if (_lastChar == '+') {
+			return true;
+		}
+
+		return false;
+	}
+
 	private boolean _isLastCharScientificNotation() {
 		if (_lastChar == 'E') {
 			return true;
@@ -349,7 +386,7 @@ public abstract class BaseJSONParser<T> {
 
 	private Object _readValue(boolean parseMaps) {
 		if (_lastChar == '[') {
-			return _readValueAsArray();
+			return _readValueAsArray(parseMaps);
 		}
 		else if (_lastChar == 'f') {
 			return _readValueAsBooleanFalse();
@@ -363,7 +400,7 @@ public abstract class BaseJSONParser<T> {
 		else if (_lastChar == '"') {
 			return _readValueAsString();
 		}
-		else if (parseMaps && _lastChar == '{') {
+		else if (parseMaps && (_lastChar == '{')) {
 			try {
 				Class<? extends BaseJSONParser> clazz = getClass();
 
@@ -393,7 +430,7 @@ public abstract class BaseJSONParser<T> {
 		}
 	}
 
-	private Object[] _readValueAsArray() {
+	private Object[] _readValueAsArray(boolean parseMaps) {
 		List<Object> objects = new ArrayList<>();
 
 		_readNextChar();
@@ -409,7 +446,7 @@ public abstract class BaseJSONParser<T> {
 		do {
 			_readWhileLastCharIsWhiteSpace();
 
-			objects.add(_readValue());
+			objects.add(_readValue(parseMaps));
 
 			_readWhileLastCharIsWhiteSpace();
 		}
@@ -488,7 +525,7 @@ public abstract class BaseJSONParser<T> {
 
 		_setCaptureStart();
 
-		while ((_lastChar != '"') || (_json.charAt(_index - 2) == '\\')) {
+		while ((_lastChar != '"') || _isCharEscaped(_json, _index - 1)) {
 			_readNextChar();
 		}
 
@@ -554,7 +591,8 @@ public abstract class BaseJSONParser<T> {
 			_readNextChar();
 		}
 		while (_isLastCharDigit() || _isLastCharDecimalSeparator() ||
-			   _isLastCharNegative() || _isLastCharScientificNotation());
+			   _isLastCharNegative() || _isLastCharPositive() ||
+			   _isLastCharScientificNotation());
 
 		return _getCapturedSubstring();
 	}
@@ -572,8 +610,25 @@ public abstract class BaseJSONParser<T> {
 	}
 
 	private String _unescape(String string) {
-		for (String[] strings : JSON_ESCAPE_STRINGS) {
-			string = string.replace(strings[1], strings[0]);
+		for (int i = JSON_ESCAPE_STRINGS.length - 1; i >= 0; i--) {
+			String[] escapeStrings = JSON_ESCAPE_STRINGS[i];
+
+			int index = string.indexOf(escapeStrings[1]);
+
+			while (index != -1) {
+				if (!_isCharEscaped(string, index)) {
+					string =
+						string.substring(0, index) + escapeStrings[0] +
+							string.substring(index + escapeStrings[1].length());
+
+					index = string.indexOf(
+						escapeStrings[1], index + escapeStrings[0].length());
+				}
+				else {
+					index = string.indexOf(
+						escapeStrings[1], index + escapeStrings[1].length());
+				}
+			}
 		}
 
 		return string;

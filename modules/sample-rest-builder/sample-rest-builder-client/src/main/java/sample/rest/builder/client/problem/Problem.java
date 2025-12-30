@@ -28,6 +28,8 @@ public class Problem {
 		}
 
 		public ProblemException(Problem problem) {
+			super(problem.getTitle());
+
 			_problem = problem;
 		}
 
@@ -131,6 +133,26 @@ public class Problem {
 		@Override
 		protected Problem[] createDTOArray(int size) {
 			return new Problem[size];
+		}
+
+		@Override
+		protected boolean parseMaps(String jsonParserFieldName) {
+			if (Objects.equals(jsonParserFieldName, "detail")) {
+				return false;
+			}
+			else if (Objects.equals(jsonParserFieldName, "status")) {
+				return false;
+			}
+			else if (Objects.equals(jsonParserFieldName, "title")) {
+				return false;
+			}
+			else if (Objects.equals(jsonParserFieldName, "type")) {
+				return false;
+			}
+			else {
+				throw new IllegalArgumentException(
+					"Unsupported field name " + jsonParserFieldName);
+			}
 		}
 
 		@Override

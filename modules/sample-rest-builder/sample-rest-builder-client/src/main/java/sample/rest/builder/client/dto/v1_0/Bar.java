@@ -1,5 +1,7 @@
 package sample.rest.builder.client.dto.v1_0;
 
+import java.io.Serializable;
+
 import java.util.Date;
 import java.util.Objects;
 
@@ -13,7 +15,11 @@ import sample.rest.builder.client.serdes.v1_0.BarSerDes;
  * @generated
  */
 @Generated("")
-public class Bar implements Cloneable {
+public class Bar implements Cloneable, Serializable {
+
+	public static Bar toDTO(String json) {
+		return BarSerDes.toDTO(json);
+	}
 
 	public Boolean getActive() {
 		return active;

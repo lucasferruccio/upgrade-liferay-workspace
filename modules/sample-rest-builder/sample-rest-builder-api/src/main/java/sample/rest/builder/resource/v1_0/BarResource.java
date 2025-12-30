@@ -1,8 +1,18 @@
 package sample.rest.builder.resource.v1_0;
 
+import com.liferay.portal.kernel.service.GroupLocalService;
+import com.liferay.portal.kernel.service.ResourceActionLocalService;
+import com.liferay.portal.kernel.service.ResourcePermissionLocalService;
+import com.liferay.portal.kernel.service.RoleLocalService;
+import com.liferay.portal.odata.filter.ExpressionConvert;
+import com.liferay.portal.odata.filter.FilterParserProvider;
+import com.liferay.portal.odata.sort.SortParserProvider;
 import com.liferay.portal.vulcan.accept.language.AcceptLanguage;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 import javax.annotation.Generated;
 
@@ -27,17 +37,13 @@ import sample.rest.builder.dto.v1_0.Bar;
 @ProviderType
 public interface BarResource {
 
-	public static Builder builder() {
-		return FactoryHolder.factory.create();
-	}
-
-	public Bar postBar(Bar bar) throws Exception;
-
 	public Bar deleteBar(Long barId) throws Exception;
 
 	public Bar getBar(Long barId) throws Exception;
 
 	public Bar patchBar(Long barId, Bar bar) throws Exception;
+
+	public Bar postBar(Bar bar) throws Exception;
 
 	public Bar putBar(Long barId, Bar bar) throws Exception;
 
@@ -62,10 +68,42 @@ public interface BarResource {
 	public void setContextUser(
 		com.liferay.portal.kernel.model.User contextUser);
 
-	public static class FactoryHolder {
+	public void setExpressionConvert(
+		ExpressionConvert<com.liferay.portal.kernel.search.filter.Filter>
+			expressionConvert);
 
-		public static volatile Factory factory;
+	public void setFilterParserProvider(
+		FilterParserProvider filterParserProvider);
 
+	public void setGroupLocalService(GroupLocalService groupLocalService);
+
+	public void setResourceActionLocalService(
+		ResourceActionLocalService resourceActionLocalService);
+
+	public void setResourcePermissionLocalService(
+		ResourcePermissionLocalService resourcePermissionLocalService);
+
+	public void setRoleLocalService(RoleLocalService roleLocalService);
+
+	public void setSortParserProvider(SortParserProvider sortParserProvider);
+
+	public default com.liferay.portal.kernel.search.filter.Filter toFilter(
+		String filterString) {
+
+		return toFilter(
+			filterString, Collections.<String, List<String>>emptyMap());
+	}
+
+	public default com.liferay.portal.kernel.search.filter.Filter toFilter(
+		String filterString, Map<String, List<String>> multivaluedMap) {
+
+		return null;
+	}
+
+	public default com.liferay.portal.kernel.search.Sort[] toSorts(
+		String sortsString) {
+
+		return new com.liferay.portal.kernel.search.Sort[0];
 	}
 
 	@ProviderType
@@ -78,7 +116,12 @@ public interface BarResource {
 		public Builder httpServletRequest(
 			HttpServletRequest httpServletRequest);
 
+		public Builder httpServletResponse(
+			HttpServletResponse httpServletResponse);
+
 		public Builder preferredLocale(Locale preferredLocale);
+
+		public Builder uriInfo(UriInfo uriInfo);
 
 		public Builder user(com.liferay.portal.kernel.model.User user);
 
