@@ -57,5 +57,5 @@ public class SchedulerJobSample implements SchedulerJobConfiguration {
 	private volatile SchedulerJobSampleConfiguration _schedulerJobSampleConfiguration;
 
 	private static final Log _log = LogFactoryUtil.getLog(SchedulerJobSample.class);
-	
+
 }
