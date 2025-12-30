@@ -1,16 +1,20 @@
 package sso.integration.login;
 
+import com.liferay.oauth.client.persistence.model.OAuthClientEntry;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
-import com.liferay.portal.security.sso.openid.connect.OpenIdConnectProviderRegistry;
-import com.liferay.portal.security.sso.openid.connect.OpenIdConnectServiceHandler;
+import com.liferay.portal.kernel.security.auth.CompanyThreadLocal;
+import com.liferay.portal.kernel.util.ListUtil;
+import com.liferay.portal.security.sso.openid.connect.OpenIdConnectAuthenticationHandler;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import javax.servlet.*;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.Collection;
+import java.util.List;
+
+import com.liferay.oauth.client.persistence.service.OAuthClientEntryLocalService;
 
 @Component(
 	immediate = true,
@@ -36,19 +40,21 @@ public class LoginFilter implements Filter {
 			HttpServletRequest request = (HttpServletRequest) servletRequest;
 			HttpServletResponse response = (HttpServletResponse) servletResponse;
 
-			//Get OpenId Providers
-			Collection<String> openIdConnectProviderNames = openIdConnectProviderRegistry.getOpenIdConnectProviderNames();
+			//Get OpenId configurations
+			List<OAuthClientEntry> oAuthClientEntries = oAuthClientEntryLocalService.
+					getAuthServerWellKnownURISuffixOAuthClientEntries(
+							CompanyThreadLocal.getCompanyId(), "openid-configuration");
 
-			if (openIdConnectProviderNames == null || openIdConnectProviderNames.isEmpty()) {
-				filterChain.doFilter(servletRequest, servletResponse);
+			if (ListUtil.isEmpty(oAuthClientEntries)) {
+				_log.warn("No OpenID Connect Providers found.");
 				return;
 			}
 
-			// Get first OpenID Provider
-			String openIdConnectProviderName = openIdConnectProviderNames.iterator().next();
+			OAuthClientEntry oAuthClientEntry = oAuthClientEntries.get(0);
 
 			// Request Provider's authentication
-			openIdConnectServiceHandler.requestAuthentication(openIdConnectProviderName, request, response);
+			openIdConnectAuthenticationHandler.requestAuthentication(
+					oAuthClientEntry.getOAuthClientEntryId(), request, response);
 		}
 		catch (Exception e) {
 			_log.error("Error in KeycloakLoginFilter: " + e.getMessage(), e);
@@ -63,10 +69,9 @@ public class LoginFilter implements Filter {
 	}
 
 	@Reference
-	private OpenIdConnectProviderRegistry openIdConnectProviderRegistry;
-
+	private OAuthClientEntryLocalService oAuthClientEntryLocalService;
 	@Reference
-	private OpenIdConnectServiceHandler openIdConnectServiceHandler;
+	private OpenIdConnectAuthenticationHandler openIdConnectAuthenticationHandler;
 
 	private static final Log _log = LogFactoryUtil.getLog(LoginFilter.class);
 }
