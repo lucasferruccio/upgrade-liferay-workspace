@@ -5,15 +5,19 @@ import com.liferay.portal.kernel.events.LifecycleEvent;
 import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.security.auth.CompanyThreadLocal;
+import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.Portal;
 import com.liferay.portal.kernel.util.StringUtil;
-import com.liferay.portal.security.sso.openid.connect.OpenIdConnectProvider;
-import com.liferay.portal.security.sso.openid.connect.OpenIdConnectProviderRegistry;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
+import com.liferay.oauth.client.persistence.model.OAuthClientASLocalMetadata;
+import com.liferay.oauth.client.persistence.model.OAuthClientEntry;
+import com.liferay.oauth.client.persistence.service.OAuthClientASLocalMetadataLocalService;
+import com.liferay.oauth.client.persistence.service.OAuthClientEntryLocalService;
 
 import javax.servlet.http.HttpServletRequest;
-import java.util.Collection;
+import java.util.List;
 
 import static com.liferay.portal.kernel.json.JSONFactoryUtil.createJSONObject;
 
@@ -29,21 +33,23 @@ public class KeycloakLogoutPostAction implements LifecycleAction {
 	@Override
 	public void processLifecycleEvent(LifecycleEvent lifecycleEvent) {
 		try {
-			Collection<String> openIdConnectProviderNames =
-					_openIdConnectProviderRegistry.getOpenIdConnectProviderNames();
+			//Get OpenId configurations
+			List<OAuthClientEntry> oAuthClientEntries = _oAuthClientEntryLocalService.
+					getAuthServerWellKnownURISuffixOAuthClientEntries(
+							CompanyThreadLocal.getCompanyId(), "openid-configuration");
 
-			if (openIdConnectProviderNames == null || openIdConnectProviderNames.isEmpty()) {
+			if (ListUtil.isEmpty(oAuthClientEntries)) {
 				LOG.warn("No OpenID Connect Providers found.");
 				return;
 			}
 
-			String openIdConnectProviderName = openIdConnectProviderNames.iterator().next();
-			OpenIdConnectProvider<?, ?> openIdConnectProvider =
-					_openIdConnectProviderRegistry.getOpenIdConnectProvider(openIdConnectProviderName);
+			OAuthClientEntry oAuthClientEntry = oAuthClientEntries.get(0);
 
-			Object oidcProviderMetadata = openIdConnectProvider.getOIDCProviderMetadata();
+			OAuthClientASLocalMetadata oAuthClientASLocalMetadata =
+					_oAuthClientASLocalMetadataLocalService.getOAuthClientASLocalMetadata(
+							oAuthClientEntry.getAuthServerWellKnownURI());
 
-			JSONObject oidcJsonObject = createJSONObject(oidcProviderMetadata.toString());
+			JSONObject oidcJsonObject = createJSONObject(oAuthClientASLocalMetadata.getMetadataJSON());
 
 			String logoutEndpoint = StringUtil.replaceLast(
 					oidcJsonObject.getString("authorization_endpoint"), "/auth", "/logout");
@@ -60,10 +66,12 @@ public class KeycloakLogoutPostAction implements LifecycleAction {
 		return _portal.getPortalURL(request) + "/";
 	}
 
-
 	@Reference
 	private Portal _portal;
 
 	@Reference
-	private OpenIdConnectProviderRegistry<?, ?> _openIdConnectProviderRegistry;
+	private OAuthClientASLocalMetadataLocalService _oAuthClientASLocalMetadataLocalService;
+
+	@Reference
+	private OAuthClientEntryLocalService _oAuthClientEntryLocalService;
 }
