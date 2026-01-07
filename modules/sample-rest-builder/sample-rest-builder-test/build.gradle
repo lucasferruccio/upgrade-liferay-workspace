@@ -1,12 +1,15 @@
 configurations.all {
-	resolutionStrategy {
-		force group: "com.liferay.portal", name: "com.liferay.portal.test", version: "7.1.0"
-	}
+    resolutionStrategy {
+        force group: "com.liferay.portal", name: "com.liferay.portal.test", version: "7.1.0"
+    }
 }
 
 dependencies {
-	testIntegrationImplementation group: "com.liferay.portal", name: "release.dxp.api"
-	testIntegrationImplementation project(":modules:sample-rest-builder:sample-rest-builder-api")
-	testIntegrationImplementation project(":modules:sample-rest-builder:sample-rest-builder-client")
-	testIntegrationImplementation group: "javax.annotation", name: "javax.annotation-api", version: "1.3.2"
+    testIntegrationImplementation group: "com.liferay.portal", name: "release.dxp.api"
+    testIntegrationImplementation group: "com.liferay.portal", name: "com.liferay.portal.test"
+    testIntegrationImplementation project(":modules:sample-rest-builder:sample-rest-builder-api")
+    testIntegrationImplementation project(":modules:sample-rest-builder:sample-rest-builder-client")
+    testIntegrationImplementation group: "javax.annotation", name: "javax.annotation-api", version: "1.3.2"
+    testIntegrationImplementation group: "org.powermock", name: "powermock-module-junit4", version: "2.0.9"
+    testIntegrationImplementation group: 'com.liferay', name: 'com.liferay.arquillian.extension.junit.bridge', version: '1.0.21'
 }
