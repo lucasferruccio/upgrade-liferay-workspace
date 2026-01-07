@@ -1,3 +1,19 @@
+import com.liferay.gradle.plugins.test.integration.task.StartTestableTomcatTask
+import com.liferay.gradle.plugins.test.integration.task.StopTestableTomcatTask
+import com.liferay.gradle.plugins.test.integration.task.SetUpTestableTomcatTask 
+
+tasks.withType(SetUpTestableTomcatTask).configureEach {
+    dir = file("${rootDir}/bundles/tomcat")
+}
+
+tasks.withType(StartTestableTomcatTask).configureEach {
+	binDir = file("${rootDir}/bundles/tomcat/bin")
+}
+
+tasks.withType(StopTestableTomcatTask).configureEach {
+	binDir = file("${rootDir}/bundles/tomcat/bin")
+}
+
 configurations.all {
     resolutionStrategy {
         force group: "com.liferay.portal", name: "com.liferay.portal.test", version: "7.1.0"
